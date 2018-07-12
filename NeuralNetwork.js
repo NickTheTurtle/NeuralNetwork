@@ -115,11 +115,11 @@ class NeuralNetwork {
     }
     // Backward propagation
     for (let i = 0; i < iterations; ++i) {
-      if (maxTime && maxTime < (new Date).getTime() - startTime) {
-        console.log(`Training ended due to time limit reached\nTime spent: ${(new Date).getTime() - startTime} ms`);
-        return this;
-      }
       for (let j = 0, l = data.length; j < l; ++j) {
+        if (maxTime && maxTime < (new Date).getTime() - startTime) {
+          console.log(`Training ended due to time limit reached\nIterations: ${i} times\nTime spent: ${(new Date).getTime() - startTime} ms`);
+          return this;
+        }
         let currentData = data[j],
             result = this.run(currentData.input, true),
             outputLayer = result[result.length - 1],
@@ -160,7 +160,7 @@ class NeuralNetwork {
         }
       }
     }
-    console.log(`Training ended due to iterations reached\nTime spent: ${(new Date).getTime() - startTime} ms`);
+    console.log(`Training ended due to iterations reached\nIterations: ${i} times\nTime spent: ${(new Date).getTime() - startTime} ms`);
     return this;
   }
   test(data, equality = (x, y) => Math.round(x) === Math.round(y)) {
