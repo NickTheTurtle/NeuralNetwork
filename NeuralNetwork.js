@@ -105,7 +105,7 @@ class NeuralNetwork {
     if (!Array.isArray(data) || data.length < 1
       || data.find((a) => !Array.isArray(a.input) || a.input.length !== inputLength || a.input.find((b) => typeof b !== "number") || !Array.isArray(a.output) || a.output.length !== outputLength || a.output.find((b) => typeof b !== "number"))
     ) {
-      throw Error(`Training data not formatted correctly`);
+      throw Error("Training data not formatted correctly");
     }
     if (typeof iterations !== "number" && !Number.isInteger(iterations) && iterations < 1) {
       throw Error("Iterations must be a positive integer");
@@ -163,13 +163,16 @@ class NeuralNetwork {
     console.log(`Training ended due to iterations reached\nTime spent: ${(new Date).getTime() - startTime} ms`);
     return this;
   }
-  test(data) {
+  test(data, equality = (x, y) => Math.round(x) === Math.round(y)) {
     let inputLength = this.weights[0].length,
         outputLength = this.weights[this.weights.length - 1][0].length;
     if (!Array.isArray(data) || data.length < 1
       || data.find((a) => !Array.isArray(a.input) || a.input.length !== inputLength || a.input.find((b) => typeof b !== "number") || !Array.isArray(a.output) || a.output.length !== outputLength || a.output.find((b) => typeof b !== "number"))
     ) {
-      throw Error(`Training data not formatted correctly`);
+      throw Error("Training data not formatted correctly");
+    }
+    if (typeof equality !== "function") {
+      throw Error("Equality argument must be undefined or a function");
     }
     let num = 0;
     for (let i = 0, l = data.length; i < l; ++i) {
@@ -177,7 +180,7 @@ class NeuralNetwork {
           result = this.run(currentData.input),
           correct = true;
       for (let j = 0, m = result.length; j < m; ++j) {
-        if (Math.round(result[j]) !== Math.round(currentData.output)) {
+        if (!equality(result[j], currentData.output)) {
           correct = false;
           break;
         }
