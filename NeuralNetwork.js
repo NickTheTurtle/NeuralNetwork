@@ -1,5 +1,5 @@
 class NeuralNetwork {
-  constructor(layers, {activation, activationDerivative} = {activation: true, activationDerivative: true}) {
+  constructor(layers, {activation, activationDerivative} = {activation: false, activationDerivative: false}) {
     // Check if layers is a valid argument
     // Initialize neural network
     if (!Array.isArray(layers) || layers.length < 2) {
@@ -97,7 +97,7 @@ class NeuralNetwork {
     }
     return currentInput;
   }
-  train(data, learningRate = 0.1, iterations = 10000, maxTime) {
+  train(data, learningRate = 0.1, iterations = 10000, maxTime, feedback = () => 0) {
     // Check if data, iterations, and maxTime is valid
     let inputLength = this.weights[0].length,
         outputLength = this.weights[this.weights.length - 1][0].length,
@@ -107,15 +107,24 @@ class NeuralNetwork {
     ) {
       throw Error("Training data not formatted correctly");
     }
+    if (typeof learningRate !== "number" && learningRate <= 0) {
+      throw Error("Learning rate must be a positive real number");
+    }
     if (typeof iterations !== "number" && !Number.isInteger(iterations) && iterations < 1) {
       throw Error("Iterations must be a positive integer");
     }
     if (!(maxTime === undefined || maxTime === null) && (typeof iterations !== "number" && iterations <= 0)) {
       throw Error("Max time must be one of undefined, null, or a positive number");
     }
+    if (typeof feedback !== "function") {
+      throw Error("Feedback argument must be undefined or a function");
+    }
     // Backward propagation
+    console.log("Initialized training");
+    let length = data.length;
     for (let i = 0; i < iterations; ++i) {
-      for (let j = 0, l = data.length; j < l; ++j) {
+      let totalCost = 0;
+      for (let j = 0, l = length; j < l; ++j) {
         if (maxTime && maxTime < (new Date).getTime() - startTime) {
           console.log(`Training ended due to time limit reached\nIterations: ${i} times\nTime spent: ${(new Date).getTime() - startTime} ms`);
           return this;
@@ -128,6 +137,7 @@ class NeuralNetwork {
         for (let k = 0, m = outputLayer.length; k < m; ++k) {
           let currentOutputNeuron = outputLayer[k];
           outputLayerError.push((currentOutputNeuron.after - currentData.output[k]) * this.activationDerivative(currentOutputNeuron.before));
+          totalCost += (currentOutputNeuron.after - currentData.output[k]) ** 2;
         }
         errors.push(outputLayerError);
         for (let k = result.length - 1; k > 1; --k) {
@@ -159,11 +169,22 @@ class NeuralNetwork {
           }
         }
       }
+      totalCost *= 0.5 / length;
+      feedback(i, totalCost);
     }
-    console.log(`Training ended due to iterations reached\nIterations: ${i} times\nTime spent: ${(new Date).getTime() - startTime} ms`);
+    console.log(`Training ended due to iterations reached\nIterations: ${iterations} times\nTime spent: ${(new Date).getTime() - startTime} ms`);
     return this;
   }
-  test(data, equality = (x, y) => Math.round(x) === Math.round(y)) {
+  test(data, equality = (x, y) => {
+    let correct = true;
+    for (let i = 0, l = x.length; i < l; ++i) {
+      if (Math.round(x[i]) !== Math.round(y[i])) {
+        correct = false;
+        break;
+      }
+    }
+    return correct;
+  }, feedback = () => 0) {
     let inputLength = this.weights[0].length,
         outputLength = this.weights[this.weights.length - 1][0].length;
     if (!Array.isArray(data) || data.length < 1
@@ -174,22 +195,21 @@ class NeuralNetwork {
     if (typeof equality !== "function") {
       throw Error("Equality argument must be undefined or a function");
     }
+    if (typeof feedback !== "function") {
+      throw Error("Feedback argument must be undefined or a function");
+    }
     let num = 0;
+    console.log("Initialized testing");
     for (let i = 0, l = data.length; i < l; ++i) {
       let currentData = data[i],
           result = this.run(currentData.input),
-          correct = true;
-      for (let j = 0, m = result.length; j < m; ++j) {
-        if (!equality(result[j], currentData.output)) {
-          correct = false;
-          break;
-        }
-      }
-      if (correct) {
+          equal = equality(result, currentData.output);
+      if (equal) {
         ++num;
       }
+      feedback(i, result, equal, num, l);
     }
-    console.log(`Testing ended\nAccuracy rate: ${Math.round(num / data.length * 10000) / 100}%`);
+    console.log(`Testing ended\nAccuracy rate: ${num} / ${data.length} = ${Math.round(num / data.length * 10000) / 100}%`);
     return this;
   }
   toFunction() {
